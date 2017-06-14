@@ -1,0 +1,67 @@
+Alejandro Pena Caicedo
+ufid:3712-3113
+COP4600
+Project 2
+
+IMPORTANT NOTES:
+
+Similar to project 1, for project 2 to compile and run test function: i put makefile and pr1_test.c into /root. I then type “make” which will produce an executable call “Test”, to run the executable type “./Test <val>” where val is a number 0-5: 0 for stop_plog; 1 for start_plog; 2 for reset_plog; 3 for get_plog_size; 4 for get_plog_byPID; and 5 for get_plog_byindex. An example, to start plog “./test 1” .
+
+About man file: the man file called “procLog.1” should be located in /usr/src/man/man1. To run the man file you must be in /usr/src/man/man1 and then type “man ./procLog.1” .
+
+//////////////////////////////////////////////////////////////////////////////////////////
+What i learned/implemented:
+	For project 2, i built off of project 1 to create a process logger that also records which state transitions each process went through. 
+	
+	Where State Transitions occur: 
+-Initialize process then Ready = /servers/pm within do_fork() function, 
+-Ready to Running=kernel/proc.c within the function pick_proc(), 
+-Running to Ready=/servers/pm/schedule.c within do_noquantum(), 
+-Running to Blocked = /kernel/proc.c within dequeue() function, 
+-Running to Terminated= /servers/pm within do_exit().
+	To tackle this assignment, i first followed a tutorial that taught me how to create a kernel call and a kernel library call. This is critical to project 2, because it is how i communicated from kernel space to user space(servers/pm). My kernel call first has two “helper functions”, the purpose of these helper functions is to include them within pick_proc() and dequeue(), that way whenever a process enters the states associated with these two functions i can record their existence within those 2 states and assign it to the process. After the kernel helper functions update the 2 global state variables for each process, my kernel call returns the appropriate value to the kernel library function.
+The purpose of the kernel library function is that is what communicates between the kernel(kernel call) and the user space(system call), my kernel library function calls on the kernel call which returns a value, this same value is then returned by the kernel library function. I placed my kernel library function within servers/pm/project1.c inside of my system call helper function ex_time(), which is always called whenever a process terminates. Whenever ex_time() is called it calls the chain of the kernel library function and then kernel call, which goes back up the chain and updates a variable within ex_time() which in turn updates each processes buffer element, thus recording the state changes for each process(unless the process buffer is on non-listening mode). Finally, in my test function i can call upon recorded processes by their pid or index values, which will show which state changes the process went through. 
+	I learned that kernel and user space cannot communicate directly, but through library functions this gap may be bridged. I also learned that there are different types of library functions which exist within kernel or userspace for different purposes, and help communicate between different directories. I also learned that to access/update values within kernel space we must create kernel calls and kernel helper functions which can access them. I also learned that PID’s only exist within user space, but you may tie user space and kernel space processes by the process endpoints(you can also add PID to all processes by adding a variable to each process struct in proc.h). I learned where the state transitions occur(and which functions associate with the states), both in servers and in kernel. I learned that file writing occurs within VFS, but that it is impossible to communicate from pm to vfs or pm to sched, the only way to do so is through library functions. Finally, i learned that time is most fine/exact if you record it through a variable type called u64_t and with a function called get_uptime which gets(in ticks) the realtime since boot.
+
+
+What i know but couldn’t implement:
+	-Where to write to files(trouble communicating from vfs to pm):
+	I know that you can write to files within /usr/src/servers/vfs and this is the only directory where this may occur because it is the only one with built-in MINIX functions to create/open/write/close text files. The issue i encountered was that VFS and PM can’t directly communicate, they may communicate through user-level library functions but unfortunately i was unable to find a tutorial that could guide me in properly communicating between these two “servers” directories. I had to settle with recording the process changes within the process buffer i created for project1(which i had to update).
+	-Where to record kernel time in ticks(bottleneck with kernel call returns):
+	I know that within kernel space you may get very specific time values, in ticks rather than seconds, by creating variables of type u64_t and setting their values by using the function get_uptime() which finds the time since boot in ticks. The problem is that kernel calls only communicate with kernel library functions when the kernel call returns a value. The issue arises that you may only return one value at a time with the kernel call, and this return value was reserved(in my implementation) for the state changes for each process that occur within kernel/proc.c. Though i had many ideas on how to do so, i couldn’t find a way to successfully send both the state changes and the time of the changes, and the state changes took precedence.
+	-Record Running to Ready(trouble communicating from sched to pm)
+	I know that the state transition from Running to Ready occurs within /servers/sched/schedule.c inside of a function called do_noquantum(). This transition occurs when a process is running but runs out of time quantum, so it goes to ready state and allows another process CPU time until it is later pulled from the ready queue. The issue arises, similar to VFS, that i cannot properly communicate from PM to/from SCHED. I do know that this issue is solved with library calls, but was unable to find a tutorial that could properly show me how to reliably create and use this type of library call.
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+Diff file directories and their designated files:
+
+System Call Files/Paths:
+fork_exitDiff.txt:	/usr/src/servers/pm/forkexit.c
+tableDiff.txt:	/usr/src/servers/pm/table.c
+callnrDiff.txt:	/usr/src/include/minix/callnr.h
+protoDiff.txt:	/usr/src/servers/pm/proto.h
+pmMakeDiff.txt: /usr/src/servers/pm/Makefile
+unistdDiff.txt:	/usr/src/include/unistd.h
+libcMakeDiff.txt:	/usr/src/lib/libc/sys-minix/Makefile.inc
+-** Only edited one from pr1, system call in pm: project1.c
+-library call: /usr/src/lib/libc/sys-minix/pr1_lib.c
+- test function/makefile in root: pr1_test.c
+-**manfile: /usr/src/man/man1/procLog.1
+ 
+Kernel Call Files/Paths:
+proc.c where some state changes occur: /usr/src/kernel/proc.c
+prototype definition: /usr/src/kernel/system.h
+-kernel call implementation: /usr/src/kernel/system/do_sample.c
+kernel call makefile: /usr/src/kernel/system/Makefile.inc
+mapping in kernel call table: /usr/src/kernel/system.c
+prototype for kernel lib call: /usr/src/include/minix/syslib.h
+kernel lib call number: /usr/src/include/minix/com.h
+adding SAMPLE service to system tab: /usr/src/commands/service/parse.c
+-kernel lib call implementation:  /usr/src/lib/libsys/sys_sample.c
+kernel lib call makefile: /usr/src/lib/libsys/Makefile
+
+//////////////////////////////////////////////////////////////////////////////////////////
+Bugs:
+The only known bug is that I’m unsure if my way of recording the state changes is specific/exact enough, because most or all processes frequently are queued and dequeued within proc.c from ready to running and running to blocked, so my implementation of project 2 is to record that each process went through these state changes, but not specifically how many times it went through each of these state changes. Unlike in fork and exit where these two states only occur once per process, the state changes in proc.c and schedule.c occur more than once per process.
+

@@ -1,0 +1,54 @@
+.TH PROCESS STATELOGGER
+.SH ProcStateLog
+Man page for project 2 process state logger
+.SH SYNOPSIS
+.B Man file for Project 2
+.RB [ \-az ]
+.RI [ arguments " ...]"
+.SH DESCRIPTION
+.de SP
+.if t .sp 0.4
+.if n .sp
+..
+.B StateLog
+Through a user-level test function, can use a mix of kernel calls, library calls, system calls, and kernel library calls to log process states.  Options for instance:
+.SH ProgramValues
+.TP
+.B \0
+0 Stop Proc Log
+.TP
+.B \1
+Start Log
+.TP
+.B \2
+reset log
+.TP
+.B \3
+get log size
+.TP
+.B \4
+log state changes and total time by pid
+.TP
+.B \5
+log state changes and total time by index
+.IR arguments .
+.SH ENVIRONMENT
+.TP 15n
+.B MANPATH
+The path to knowledge.
+.SH FILES
+.TP 25n
+.B /usr/man/procLog.1 /usr/src/kernel/system/do_sample.c /usr/src/lib/libsys/sys_sample.c /usr/src/lib/libc/sys-minix/printmsg.c /usr/src/servers/pm/project1.c
+This file.
+.SH "SEE ALSO"
+.BR man (7).
+.SH DIAGNOSTICS
+man: No manual on template.
+.SH NOTES
+When running test program, enter values 0-5 after typing the test executable.
+For Example, "./Test 1" to start process log.
+.SH BUGS
+The size function typically shows 1 less than actual size. Indexing starts at 0.
+Not able to write to file in VFS. Unable to find time in ticks, for kernel changes. Finally, trouble communicating to and from schedule.c(Running to Ready) to record this state change.
+.SH AUTHOR
+Alejandro Pena Caicedo
